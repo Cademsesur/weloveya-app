@@ -1,5 +1,4 @@
 import CheckoutBottomSheet from "@/components/CheckoutBottomSheet";
-import PaymentButton from "@/components/PaymentButton";
 import api, { EventDetail, PassType } from "@/services/api";
 import { useTheme } from "@/services/contexts/ThemeContext";
 import {
@@ -354,33 +353,31 @@ export default function TendancesPage() {
       minWidth: 36,
       textAlign: 'center',
     },
-    paymentButtonContainer: {
-      marginTop: 6,
-      marginBottom: 6,
+    buttonContainer: {
+      paddingHorizontal: 20,
+      paddingBottom: 20,
+      paddingTop: 5,
+      backgroundColor: theme.background,
+      marginTop: -10,
     },
-    paymentButton: {
-      backgroundColor: theme.isDark ? theme.primary : '#FFFFFF',
-      paddingVertical: 16,
-      borderRadius: 14,
+    payButton: {
+      width: '100%',
+      height: 52.5,
+      backgroundColor: theme.primary,
+      borderRadius: 10,
+      justifyContent: 'center',
       alignItems: 'center',
-      ...Platform.select({
-        ios: {
-          shadowColor: theme.isDark ? theme.primary : 'rgba(0, 0, 0, 0.1)',
-          shadowOffset: { width: 0, height: 4 },
-          shadowOpacity: 0.2,
-          shadowRadius: 8,
-        },
-        android: {
-          elevation: 6,
-        },
-      }),
     },
-    paymentButtonActive: {
-      backgroundColor: theme.isDark ? '#FFFFFF' : '#18172A',
+    payButtonDisabled: {
+      backgroundColor: theme.isDark ? '#3A394F' : '#E5E5E5',
+      opacity: 0.7,
     },
-    paymentButtonDisabled: {
-      backgroundColor: theme.isDark ? '#3A394F' : '#D1D1D1',
-      opacity: 0.6,
+    payButtonText: {
+      fontFamily: 'KumbhSans_700Bold',
+      fontSize: 14,
+      color: theme.primaryText || (theme.isDark ? '#18172A' : '#FFFFFF'),
+      textAlign: 'center',
+      lineHeight: 14,
     },
     loadingContainer: {
       flex: 1,
@@ -548,226 +545,27 @@ export default function TendancesPage() {
               </View>
             </View>
 
-            {/* BOUTON DE PAIEMENT */}
-            <View style={styles.paymentButtonContainer}>
-              <PaymentButton
-                amount={totalPrice}
-                email="client@example.com"
-                phone="00000000"
-                buttonText={
-                  selectedTicket 
-                    ? `Payer ${Math.round(totalPrice).toLocaleString('fr-FR')} FCFA` 
-                    : "Sélectionner un billet"
-                }
-                disabled={!selectedTicket || totalPrice <= 0}
-                loading={isPaying}
-                buttonStyle={[
-                  styles.paymentButton,
-                  selectedTicket && styles.paymentButtonActive,
-                  (!selectedTicket || totalPrice <= 0) && styles.paymentButtonDisabled
-                ]}
-                buttonTextStyle={{
-                  color: selectedTicket ? (theme.isDark ? '#18172A' : '#FFFFFF') : (theme.isDark ? '#18172A' : theme.primary),
-                  fontWeight: 'bold',
-                  fontSize: 15,
-                  fontFamily: 'KumbhSans_700Bold',
-                }}
-                onSuccess={async (paymentResponse: PaymentResponse) => {
-                  console.log('Réponse du paiement:', paymentResponse);
-                  try {
-                    setIsPaying(false);
-                    
-                    if (!selectedTicket) {
-                      throw new Error('Aucun billet sélectionné');
+            {/* BOUTON POUR OUVRIR LE BOTTOM SHEET DE PAIEMENT */}
+            <View style={styles.buttonContainer}>
+              <TouchableOpacity 
+                style={[
+                  styles.payButton, 
+                  (!selectedTicket || isPaying) && styles.payButtonDisabled
+                ]} 
+                onPress={() => setShowCheckout(true)}
+                disabled={!selectedTicket || isPaying}
+              >
+                {isPaying ? (
+                  <ActivityIndicator color={theme.primaryText} />
+                ) : (
+                  <Text style={styles.payButtonText}>
+                    {selectedTicket 
+                      ? `Payer ${Math.round(totalPrice).toLocaleString('fr-FR')} FCFA`
+                      : "Sélectionner un billet"
                     }
-
-                    const userToken = await AsyncStorage.getItem('auth_token');
-                    if (!userToken) {
-                      throw new Error('Utilisateur non connecté');
-                    }
-
-                    // Récupération des informations utilisateur
-                    const userData = {
-                      phone: '00000000', // À remplacer par les vraies données utilisateur
-                      name: 'Client',
-                      email: 'client@example.com'
-                    };
-
-                    // Vérification et préparation de la référence
-                    const reference = paymentResponse.transactionId?.trim();
-                    if (!reference) {
-                      throw new Error('Réponse de paiement invalide: transactionId manquant');
-                    }
-
-                    // Logs de débogage
-                    console.log('=== DONNÉES DE PAIEMENT ===');
-                    console.log('Référence:', reference);
-                    console.log('Transaction ID:', paymentResponse.transactionId);
-                    console.log('Réponse complète de KkiaPay:', JSON.stringify(paymentResponse, null, 2));
-
-                    // Vérification du format de la référence
-                    if (typeof reference !== 'string' || reference.length < 3) {
-                      throw new Error(`Format de référence invalide: ${reference}`);
-                    }
-
-                    // Préparation des données de paiement
-                    const paymentData = {
-                      reference: reference,
-                      phone_number: userData.phone,
-                      name: userData.name,
-                      email: userData.email,
-                      payment_method: 'kkiapay',
-                      amount: Math.round(totalPrice * 100), // Montant en centimes
-                      pass_type_id: selectedTicket.id,
-                      qte: count
-                    } as const;
-
-                    console.log('=== ENVOI DES DONNÉES ===');
-                    console.log('URL:', `${BASE_URL}/v1/checkout/request/init`);
-                    console.log('Headers:', {
-                      'Content-Type': 'application/json',
-                      'Accept': 'application/json',
-                      'Authorization': `Bearer ${userToken ? '***' : 'NON FOURNI'}`
-                    });
-                    console.log('Données envoyées:', JSON.stringify(paymentData, null, 2));
-
-                    const apiUrl = `${BASE_URL}/v1/checkout/request/init`;
-                    const response = await fetch(apiUrl, {
-                      method: 'POST',
-                      headers: {
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json',
-                        'Authorization': `Bearer ${userToken}`
-                      },
-                      body: JSON.stringify(paymentData)
-                    });
-
-                    // Gestion de la réponse brute
-                    const responseText = await response.text();
-                    let responseData;
-                    
-                    try {
-                      responseData = JSON.parse(responseText);
-                    } catch (e) {
-                      console.error('Erreur lors du parsing de la réponse:', e);
-                      console.error('Réponse brute:', responseText);
-                      throw new Error('Erreur de format de la réponse du serveur');
-                    }
-
-                    // Log de la réponse
-                    console.log('=== RÉPONSE DU SERVEUR ===');
-                    console.log('Status:', response.status, response.statusText);
-                    console.log('Headers:', Object.fromEntries(response.headers.entries()));
-                    console.log('Données:', responseData);
-                    
-                    // Log spécifique pour la clé 'errors' du backend
-                    if (responseData.errors) {
-                      console.log('=== ERREURS DU BACKEND ===');
-                      console.log('Errors:', JSON.stringify(responseData.errors, null, 2));
-                      
-                      // Si errors est un objet, on peut lister chaque erreur
-                      if (typeof responseData.errors === 'object') {
-                        Object.entries(responseData.errors).forEach(([field, messages]) => {
-                          console.log(`- ${field}:`, messages);
-                        });
-                      }
-                    }
-
-                    // Log de la réponse complète en mode debug
-                    console.log('=== RÉPONSE DU SERVEUR ===');
-                    console.log('Status:', response.status, response.statusText);
-                    console.log('Données:', JSON.stringify(responseData, null, 2));
-
-                    if (!response.ok) {
-                      // Construction du message d'erreur à partir de la clé 'errors'
-                      let errorMessage = 'Erreur lors du traitement du paiement';
-                      
-                      if (responseData.errors) {
-                        // Si errors est un tableau
-                        if (Array.isArray(responseData.errors)) {
-                          errorMessage = responseData.errors.join('\n');
-                        } 
-                        // Si errors est un objet avec des champs
-                        else if (typeof responseData.errors === 'object') {
-                          errorMessage = Object.entries(responseData.errors)
-                            .map(([field, messages]) => {
-                              if (Array.isArray(messages)) {
-                                return `${field}: ${messages.join(', ')}`;
-                              }
-                              return `${field}: ${messages}`;
-                            })
-                            .join('\n');
-                        }
-                      } else if (responseData.message) {
-                        errorMessage = responseData.message;
-                      }
-                        
-                      // Ajout du statut HTTP au message d'erreur
-                      const httpError = new Error(`[${response.status}] ${errorMessage}`);
-                      // @ts-ignore
-                      httpError.response = response;
-                      // @ts-ignore
-                      httpError.responseData = responseData;
-                      throw httpError;
-                    }
-                    
-                    console.log('Réponse du serveur:', responseData);
-                    
-                    Alert.alert(
-                      'Paiement réussi',
-                      'Votre billet a été acheté avec succès. Vous recevrez un email de confirmation.',
-                      [{ text: 'OK', onPress: () => router.back() }]
-                    );
-                  } catch (error: unknown) {
-                    console.error('=== ERREUR DE PAIEMENT ===');
-                    console.error('Type d\'erreur:', typeof error);
-                    
-                    if (error instanceof Error) {
-                      console.error('Message d\'erreur:', error.message);
-                      console.error('Stack trace:', error.stack);
-                    } else if (typeof error === 'object' && error !== null) {
-                      console.error('Détails de l\'erreur:', JSON.stringify(error, null, 2));
-                    }
-                    
-                    const errorMessage = error instanceof Error 
-                      ? error.message 
-                      : typeof error === 'string' 
-                        ? error 
-                        : 'Une erreur inconnue est survenue';
-                        
-                    Alert.alert(
-                      'Erreur',
-                      `Une erreur est survenue lors de l'enregistrement de votre paiement: ${errorMessage}`
-                    );
-                    
-                    // Log supplémentaire pour le débogage
-                    if (error && typeof error === 'object' && 'response' in error) {
-                      // @ts-ignore
-                      console.error('Réponse complète de l\'erreur:', JSON.stringify(error.response?.data, null, 2));
-                    }
-                  }
-                }}
-                onFailure={(error: any) => {
-                  setIsPaying(false);
-                  console.error('Erreur de paiement:', error);
-                  
-                  let errorMessage = 'Une erreur est survenue lors du paiement. Veuillez réessayer.';
-                  
-                  if (error?.message) {
-                    errorMessage = error.message;
-                  } else if (typeof error === 'string') {
-                    errorMessage = error;
-                  } else if (error?.response?.data?.message) {
-                    errorMessage = error.response.data.message;
-                  }
-                  
-                  Alert.alert(
-                    'Paiement échoué',
-                    errorMessage,
-                    [{ text: 'OK' }]
-                  );
-                }}
-              />
+                  </Text>
+                )}
+              </TouchableOpacity>
             </View>
           </>
         ) : (

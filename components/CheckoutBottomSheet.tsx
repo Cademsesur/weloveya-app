@@ -18,6 +18,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import CountryPicker, { Country, CountryCode } from 'react-native-country-picker-modal';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -27,6 +28,8 @@ interface CheckoutBottomSheetProps {
   totalPrice: number;
   ticketName: string;
   count: number;
+  onPaymentSuccess?: (data: any) => void;
+  onPaymentFailure?: (error: any) => void;
 }
 
 export default function CheckoutBottomSheet({
@@ -47,19 +50,28 @@ export default function CheckoutBottomSheet({
   const [expiryDate, setExpiryDate] = useState("");
   const [securityCode, setSecurityCode] = useState("");
   const [cardholderName, setCardholderName] = useState("");
-  const [country, setCountry] = useState("");
+  const [country, setCountry] = useState<Country | null>({
+    name: 'Bénin',
+    cca2: 'BJ',
+  } as Country);
+  const [countryCode, setCountryCode] = useState<CountryCode>('BJ');
   const [addressLine1, setAddressLine1] = useState("");
   const [state, setState] = useState("");
   const [city, setCity] = useState("");
   const [postalCode, setPostalCode] = useState("");
 
   // États pour les inputs MOMO
-  const [operator, setOperator] = useState("");
-  const [phoneNumber, setPhoneNumber] = useState("");
-  const [countryCode] = useState("+229");
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [email, setEmail] = useState("");
+  const [operator, setOperator] = useState<string>("");
+  const [phoneNumber, setPhoneNumber] = useState<string>("");
+  const [firstName, setFirstName] = useState<string>("");
+  const [lastName, setLastName] = useState<string>("");
+  const [email, setEmail] = useState<string>("");
+  const [momoCountry, setMomoCountry] = useState<Country | null>({
+    name: 'Bénin',
+    cca2: 'BJ',
+    callingCode: ['229'],
+  } as Country);
+  const [momoCountryCode, setMomoCountryCode] = useState<CountryCode>('BJ');
 
   // Gestion du swipe pour fermer
   const panResponder = useRef(
@@ -243,15 +255,54 @@ export default function CheckoutBottomSheet({
 
                   {/* Pays */}
                   <Text style={styles.label}>Pays</Text>
-                  <View style={styles.inputWrapper}>
-                    <TextInput
-                      style={styles.input}
-                      placeholder="Bénin"
-                      placeholderTextColor="#6B6A7F"
-                      value={country}
-                      onChangeText={setCountry}
+                  <View style={styles.countryPickerWrapper}>
+                    <CountryPicker
+                      withFilter
+                      withFlag
+                      withCallingCode
+                      withEmoji
+                      withAlphaFilter
+                      withCountryNameButton
+                      onSelect={(selectedCountry) => {
+                        setCountry(selectedCountry);
+                        setCountryCode(selectedCountry.cca2 as CountryCode);
+                      }}
+                      countryCode={countryCode}
+                      containerButtonStyle={{
+                        width: '100%',
+                        height: '100%',
+                        justifyContent: 'center',
+                      }}
+                      renderFlagButton={({ onOpen }) => (
+                        <TouchableOpacity 
+                          onPress={onOpen}
+                          style={{
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            width: '100%',
+                            height: '100%',
+                          }}
+                        >
+                          <Text style={{ 
+                            color: theme.text,
+                            fontFamily: 'KumbhSans_700Bold',
+                            fontSize: 14,
+                          }}>
+                            {String(country?.name || 'Bénin')}
+                          </Text>
+                          <ChevronDown size={20} color={theme.text} />
+                        </TouchableOpacity>
+                      )}
+                      theme={{
+                        primaryColor: theme.primary,
+                        primaryColorVariant: theme.primary,
+                        backgroundColor: theme.background,
+                        onBackgroundTextColor: theme.text,
+                        fontSize: 16,
+                        fontFamily: 'KumbhSans_400Regular',
+                      }}
                     />
-                    <ChevronDown size={20} color={theme.text} style={styles.iconRight} />
                   </View>
 
                   {/* Ligne adresse 1 */}
@@ -318,26 +369,48 @@ export default function CheckoutBottomSheet({
 
                   {/* Numéro */}
                   <Text style={styles.label}>Numéro</Text>
-                  <View style={styles.inputWrapper}>
-                    <View style={styles.phoneInputContainer}>
-                      <Image
-                        source={require("@/assets/images/pays.png")}
-                        style={styles.paysIcon}
-                        resizeMode="contain"
-                      />
-                      <TouchableOpacity style={styles.countryCodeSelector}>
-                        <Text style={styles.countryCodeText}>{countryCode}</Text>
-                        <ChevronDown size={16} color={theme.text} />
-                      </TouchableOpacity>
-                      <TextInput
-                        style={styles.phoneInput}
-                        placeholder="XX XX XX XX"
-                        placeholderTextColor="#6B6A7F"
-                        value={phoneNumber}
-                        onChangeText={setPhoneNumber}
-                        keyboardType="phone-pad"
-                      />
-                    </View>
+                  <View style={styles.phoneInputContainer}>
+                    <CountryPicker
+                      withFilter
+                      withCallingCode
+                      withFlag
+                      withEmoji
+                      onSelect={(selectedCountry) => {
+                        setMomoCountry(selectedCountry);
+                        setMomoCountryCode(selectedCountry.cca2 as CountryCode);
+                      }}
+                      countryCode={momoCountryCode}
+                      containerButtonStyle={{
+                        marginRight: 12,
+                      }}
+                      renderFlagButton={({ onOpen }) => (
+                        <TouchableOpacity 
+                          onPress={onOpen}
+                          style={styles.countryCodeSelector}
+                        >
+                          <Text style={styles.countryCodeText}>
+                            {momoCountry?.callingCode?.[0] ? `+${momoCountry.callingCode[0]}` : '+229'}
+                          </Text>
+                          <ChevronDown size={16} color={theme.text} />
+                        </TouchableOpacity>
+                      )}
+                      theme={{
+                        primaryColor: theme.primary,
+                        primaryColorVariant: theme.primary,
+                        backgroundColor: theme.background,
+                        onBackgroundTextColor: theme.text,
+                        fontSize: 16,
+                        fontFamily: 'KumbhSans_400Regular',
+                      }}
+                    />
+                    <TextInput
+                      style={styles.phoneInput}
+                      placeholder="XX XX XX XX"
+                      placeholderTextColor="#6B6A7F"
+                      value={phoneNumber}
+                      onChangeText={setPhoneNumber}
+                      keyboardType="phone-pad"
+                    />
                   </View>
 
                   {/* Nom et Prénom */}
@@ -482,21 +555,32 @@ const getStyles = (theme: any) => StyleSheet.create({
     marginTop: 10,
     lineHeight: 13,
   },
-  inputWrapper: {
-    position: "relative",
+  countryPickerWrapper: {
     width: "100%",
-    marginBottom: 4,
+    height: 50,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    backgroundColor: theme.surface,
+    justifyContent: 'center',
+  },
+  countryPickerButton: {
+    width: '100%',
+    height: 40,
+    justifyContent: 'center',
   },
   input: {
     width: "100%",
     height: 50,
-    backgroundColor: theme.surface,
     borderRadius: 12,
     paddingHorizontal: 16,
     fontFamily: "KumbhSans_700Bold",
     fontSize: 14,
     color: theme.text,
+    backgroundColor: theme.surface,
     borderWidth: 0,
+  },
+  inputWrapper: {
+    position: 'relative',
   },
   phoneInputContainer: {
     flexDirection: "row",
@@ -506,6 +590,7 @@ const getStyles = (theme: any) => StyleSheet.create({
     backgroundColor: theme.surface,
     borderRadius: 12,
     paddingLeft: 12,
+    paddingRight: 12,
     borderWidth: 0,
   },
   paysIcon: {
@@ -516,10 +601,10 @@ const getStyles = (theme: any) => StyleSheet.create({
   countryCodeSelector: {
     flexDirection: "row",
     alignItems: "center",
-    paddingRight: 8,
+    paddingRight: 12,
+    paddingLeft: 4,
     borderRightWidth: 1,
     borderRightColor: "rgba(255, 255, 255, 0.2)",
-    marginRight: 12,
   },
   countryCodeText: {
     fontFamily: "KumbhSans_700Bold",
