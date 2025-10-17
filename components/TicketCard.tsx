@@ -1,3 +1,4 @@
+import { useTheme } from "@/services/contexts/ThemeContext";
 import React from "react";
 import {
   View,
@@ -17,6 +18,9 @@ interface TicketCardProps {
 }
 
 export default function TicketCard({ ticketCode, price, date, type }: TicketCardProps) {
+  const { theme } = useTheme();
+  const styles = getStyles(theme);
+
   return (
     <View style={styles.container}>
       {/* Image du ticket */}
@@ -44,11 +48,11 @@ export default function TicketCard({ ticketCode, price, date, type }: TicketCard
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (theme: any) => StyleSheet.create({
   container: {
     width: SCREEN_WIDTH - 28,
     height: 70,
-    backgroundColor: "#26253B",
+    backgroundColor: theme.surface,
     borderRadius: 10,
     flexDirection: "row",
     alignItems: "center",
@@ -73,7 +77,7 @@ const styles = StyleSheet.create({
     paddingRight: 15,
   },
   ticketCode: {
-    color: "#FFFFFF",
+    color: theme.text,
     fontFamily: "KumbhSans_700Bold",
     fontSize: 14,
     lineHeight: 14,
@@ -81,7 +85,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   price: {
-    color: "#FFFFFF",
+    color: theme.text,
     fontFamily: "KumbhSans_700Bold",
     fontSize: 14,
     lineHeight: 14,
@@ -89,7 +93,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   date: {
-    color: "#FFFFFF",
+    color: theme.text,
     fontFamily: "KumbhSans_400Regular",
     fontSize: 10,
     lineHeight: 10,
@@ -97,7 +101,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   type: {
-    color: "#FFFFFF",
+    color: theme.text,
     fontFamily: "KumbhSans_400Regular",
     fontSize: 10,
     lineHeight: 10,

@@ -1,62 +1,66 @@
 {
   "expo": {
-    "name": "weloveya",
+    "name": "Weloveya",
     "slug": "weloveya",
-    "version": "1.0.0",
+    "version": "1.0.2",
+    "cli": {
+      "appVersionSource": "local"
+    },
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
-    "scheme": "weloveya",
+    "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
-
+    "scheme": "weloveya", 
+    "splash": {
+      "image": "./assets/SplashScreen.png",
+      "resizeMode": "cover",
+      "backgroundColor": "#FFFFFF"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.cademsesur.weloveya"
+      "bundleIdentifier": "app.weloveya"
     },
-
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/images/android-icon-foreground.png",
-        "backgroundImage": "./assets/images/android-icon-background.png",
-        "monochromeImage": "./assets/images/android-icon-monochrome.png"
+        "foregroundImage": "./assets/icon.png",
+        "backgroundColor": "#FFFFFF"
       },
-      "edgeToEdge": true,
-      "package": "com.cademsesur.weloveya"
+      "androidStatusBar": {
+        "barStyle": "light-content",
+        "backgroundColor": "#FFFFFF",
+        "translucent": false
+      },
+      "package": "com.dev_weloveya.weloveya",
+      "versionCode": 3
     },
-
     "web": {
-      "output": "static",
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./assets/icon.png"
     },
-
-    "splash": {
-      "image": "./assets/images/logo-splash.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#18172A"
-    },
-
     "plugins": [
       "expo-router",
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/logo-splash.png",
-          "resizeMode": "contain",
-          "backgroundColor": "#18172A",
-          "dark": {
-            "image": "./assets/images/logo-splash.png",
-            "resizeMode": "contain",
-            "backgroundColor": "#18172A"
-          }
+          "image": "./assets/SplashScreen.png",
+          "resizeMode": "cover",
+          "backgroundColor": "#FFFFFF"
+        }
+      ],
+      [
+        "expo-document-picker",
+        {
+          "iCloudContainerEnvironment": "Production"
         }
       ],
       "expo-font"
     ],
-
-    "experiments": {
-      "typedRoutes": true,
-      "reactCompiler": true
+    "extra": {
+      "webWeloveyaServicesUrl": "https://app-s5-provision-importer.weloveya.bj",
+      "eas": {
+        "projectId": "b0ec8937-f280-40d6-bfe7-5e0b4fa07c71"
+      }
     }
   }
 }

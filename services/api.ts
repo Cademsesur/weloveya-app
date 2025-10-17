@@ -1,7 +1,7 @@
 // services/api.ts
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const BASE_URL = 'https://attendee-api-v1-w52eyawle.sesur.bj/api/v1';
+const BASE_URL = 'https://attendee-api.eyawle.sesur.bj/api/v1';
 
 export interface RegisterData {
   email: string;
@@ -57,7 +57,6 @@ class ApiService {
     }
     return this.token;
   }
-
   async removeToken() {
     this.token = null;
     await AsyncStorage.removeItem('auth_token');
@@ -69,102 +68,171 @@ class ApiService {
   ): Promise<T> {
     const token = await this.getToken();
     
-    const headers: HeadersInit = {
+    const headers = {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
-      ...(token && { Authorization: `Bearer ${token}` }),
+      ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
       ...options.headers,
     };
 
-    const response = await fetch(`${BASE_URL}${endpoint}`, {
-      ...options,
-      headers,
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data.message || 'Une erreur est survenue');
-    }
-
-    return data;
-  }
-
-  async register(data: RegisterData): Promise<AuthResponse> {
-    const response = await this.request<AuthResponse>('/auth/register', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
-
-    // Sauvegarder le token après l'inscription réussie
-    if (response.data.token) {
-      await this.setToken(response.data.token);
-    }
-
-    return response;
-  }
-
-  async login(data: LoginData): Promise<AuthResponse> {
-    const response = await this.request<AuthResponse>('/auth/login', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
-
-    // Sauvegarder le token après la connexion réussie
-    if (response.data.token) {
-      await this.setToken(response.data.token);
-    }
-
-    return response;
-  }
-
-  async logout(): Promise<void> {
     try {
-      await this.request('/auth/logout', {
-        method: 'POST',
+      const response = await fetch(`${BASE_URL}${endpoint}`, {
+        ...options,
+        headers,
       });
-    } finally {
-      await this.removeToken();
+
+      const data = await response.json().catch(() => ({}));
+      
+      if (!response.ok) {
+        // Ne pas lancer d'erreur pour les 404, laisser getEvent gérer
+        if (response.status === 404) {
+          return { data: null } as unknown as T;
+        }
+        throw new Error(data.message || 'Une erreur est survenue');
+      }
+
+      return data;
+    } catch (error) {
+      console.error('API Error:', error);
+      throw error;
     }
   }
 
-  async forgotPassword(email: string): Promise<{ message: string }> {
-    return this.request('/auth/forgot-password', {
+  // Méthode POST générique
+  async post<T>(endpoint: string, data: any): Promise<T> {
+    return this.request<T>(endpoint, {
       method: 'POST',
-      body: JSON.stringify({ email }),
-    });
-  }
-
-  async resetPassword(data: {
-    token: string;
-    email: string;
-    password: string;
-    password_confirmation: string;
-  }): Promise<{ message: string }> {
-    return this.request('/auth/reset-password', {
-      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
       body: JSON.stringify(data),
     });
   }
-
   // Events
-  async getAllEvents(): Promise<EventsResponse> {
-    return this.request('/events/all', {
-      method: 'GET',
-    });
-  }
-
-  async getEvent(eventId: number): Promise<EventDetailResponse> {
-    return this.request(`/events/${eventId}`, {
-      method: 'GET',
-    });
-  }
-
   async getEventPassTypes(eventId: number): Promise<PassTypesResponse> {
-    return this.request(`/events/${eventId}/pass-types`, {
+    return this.request<PassTypesResponse>(`/events/${eventId}/pass-types`);
+  }
+
+  // Récupérer un événement par son ID
+  async getEvent(eventId: number): Promise<EventDetailResponse> {
+    try {
+      // D'abord essayer avec la route spécifique
+      try {
+        const response = await this.request<EventDetailResponse>(`/events/${eventId}`, {
+          method: 'GET',
+        });
+        if (response.data) {
+          return response;
+        }
+      } catch (error) {
+        console.log(`La route /events/${eventId} n'est pas disponible, utilisation de /events/all comme fallback`);
+      }
+      
+      // Fallback: Récupérer tous les événements et filtrer
+      const allEvents = await this.getAllEvents();
+      const foundEvent = allEvents.data.find((event: EventDetail) => event.id === eventId);
+      
+      if (!foundEvent) {
+        return { data: null } as unknown as EventDetailResponse;
+      }
+      
+      return { data: foundEvent };
+    } catch (error) {
+      console.error('Erreur lors de la récupération de l\'événement:', error);
+      return { data: null } as unknown as EventDetailResponse;
+    }
+  }
+
+  // Récupérer tous les événements
+  async getAllEvents(): Promise<EventsResponse> {
+    return this.request<EventsResponse>('/events/all', {
       method: 'GET',
     });
   }
+
+  // Récupérer toutes les catégories d'événements
+  async getEventTags(): Promise<TagsResponse> {
+    return this.request<TagsResponse>('/events/tags', {
+      method: 'GET',
+    });
+  }
+}
+
+// Define EventsResponse interface
+export interface EventsResponse {
+  data: EventDetail[];
+  message?: string;
+}
+
+export interface EventDetailResponse {
+  data: EventDetail;
+  message?: string;
+}
+
+export interface EventDetail {
+  id: number;
+  reference: string;
+  organizer_id: number;
+  name: string;
+  slug: string;
+  description?: string;
+  banner_url?: string | null;
+  start_date?: string | null;
+  end_date?: string | null;
+  sales_start_date?: string | null;
+  sales_end_date?: string | null;
+  location?: string;
+  is_online: boolean;
+  category?: string;
+  capacity?: number | null;
+  status: string;
+  visibility: string;
+  created_at?: string;
+  updated_at?: string;
+  pass_types?: PassType[];
+  'min_price-max_price'?: string | {
+    min: number | null;
+    max: number | null;
+  } | null;
+  min?: number | null;
+  max?: number | null;
+}
+
+// Define Tag interface
+export interface Tag {
+  id: number;
+  name: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TagsResponse {
+  data: Tag[];
+  message?: string;
+}
+
+// Define PassType interface
+export interface PassType {
+  id: number;
+  event_id: number;
+  name: string;
+  description?: string | null;
+  price: number | string; // Added price property
+  quota: number;
+  created_at?: string;
+  updated_at?: string;
+  event?: {
+    id: number;
+    slug?: string | null;
+    reference?: string | null;
+    name?: string | null;
+  };
+}
+
+export interface PassTypesResponse {
+  data: PassType[];
+  message?: string;
 }
 
 export default new ApiService();

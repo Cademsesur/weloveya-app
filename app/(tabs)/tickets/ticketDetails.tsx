@@ -1,3 +1,4 @@
+import { useTheme } from "@/services/contexts/ThemeContext";
 import React, { useState } from "react";
 import {
   View,
@@ -13,9 +14,12 @@ import { ScanLine } from "lucide-react-native";
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
 export default function Tickets() {
+  const { theme } = useTheme();
   const [active, setActive] = useState("A venir");
 
   const menuItems = ["A venir", "Passées"];
+
+  const styles = getStyles(theme);
 
   return (
     <View style={styles.container}>
@@ -23,7 +27,7 @@ export default function Tickets() {
       <View style={styles.header}>
         <Text style={styles.title}>Mes Tickets</Text>
         <TouchableOpacity style={styles.scanButton}>
-          <ScanLine size={24} color="white" />
+          <ScanLine size={24} color={theme.text} />
         </TouchableOpacity>
       </View>
 
@@ -80,10 +84,10 @@ export default function Tickets() {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (theme: any) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#18172A",
+    backgroundColor: theme.background,
     paddingTop: Platform.OS === "ios" ? SCREEN_HEIGHT * 0.07 : SCREEN_HEIGHT * 0.05,
   },
   header: {
@@ -95,7 +99,7 @@ const styles = StyleSheet.create({
     marginBottom: SCREEN_HEIGHT * 0.02,
   },
   title: {
-    color: "#FFFFFF",
+    color: theme.text,
     fontSize: SCREEN_WIDTH * 0.065,
     fontFamily: "KumbhSans_700Bold",
   },
@@ -111,23 +115,23 @@ const styles = StyleSheet.create({
   menuButton: {
     height: 34,
     borderRadius: 999,
-    backgroundColor: "#FFFFFF12",
+    backgroundColor: theme.isDark ? "#FFFFFF12" : theme.surfaceVariant,
     justifyContent: "center",
     alignItems: "center",
     marginRight: SCREEN_WIDTH * 0.025,
     paddingHorizontal: SCREEN_WIDTH * 0.04,
   },
   menuButtonActive: {
-    backgroundColor: "#FCC017",
+    backgroundColor: theme.primary,
   },
   menuText: {
-    color: "#FFFFFF",
+    color: theme.text,
     fontFamily: "KumbhSans_700Bold",
     fontSize: SCREEN_WIDTH * 0.035,
     textAlign: "center",
   },
   menuTextActive: {
-    color: "#18172A",
+    color: theme.primaryText,
   },
   ticketContainer: {
     paddingHorizontal: 15,
@@ -148,7 +152,7 @@ const styles = StyleSheet.create({
     marginBottom: SCREEN_HEIGHT * 0.015,
   },
   ticketCode: {
-    color: "#FFFFFF",
+    color: theme.text,
     fontFamily: "KumbhSans_700Bold",
     fontSize: 16,
     lineHeight: 16,
@@ -156,7 +160,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   ticketDate: {
-    color: "#6B6A7F",
+    color: theme.textSecondary,
     fontFamily: "KumbhSans_700Bold",
     fontSize: 10,
     lineHeight: 10,
@@ -164,7 +168,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   ticketName: {
-    color: "#FFFFFF",
+    color: theme.text,
     fontFamily: "KumbhSans_700Bold",
     fontSize: 14,
     lineHeight: 14,
@@ -172,13 +176,13 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   actionButton: {
-    backgroundColor: "#FCC017",
+    backgroundColor: theme.primary,
     paddingHorizontal: SCREEN_WIDTH * 0.06,
     paddingVertical: 8,
     borderRadius: 999,
   },
   buttonText: {
-    color: "#18172A",
+    color: theme.primaryText,
     fontFamily: "KumbhSans_700Bold",
     fontSize: 12,
   },

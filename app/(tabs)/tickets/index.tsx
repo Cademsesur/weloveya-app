@@ -1,19 +1,21 @@
+import TicketCard from "@/components/TicketCard";
+import { useTheme } from "@/services/contexts/ThemeContext";
+import { ScanLine } from "lucide-react-native";
 import React, { useState } from "react";
 import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
   Dimensions,
   Platform,
   ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
-import { ScanLine } from "lucide-react-native";
-import TicketCard from "@/components/TicketCard";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
 export default function Tickets() {
+  const { theme } = useTheme();
   const [active, setActive] = useState("A venir");
 
   const menuItems = ["A venir", "Passées"];
@@ -43,13 +45,15 @@ export default function Tickets() {
     },
   ];
 
+  const styles = getStyles(theme);
+
   return (
     <View style={styles.container}>
       {/* En-tête avec titre et icône scan */}
       <View style={styles.header}>
         <Text style={styles.title}>Mes Tickets</Text>
         <TouchableOpacity style={styles.scanButton}>
-          <ScanLine size={24} color="white" />
+          <ScanLine size={24} color={theme.text} />
         </TouchableOpacity>
       </View>
 
@@ -97,10 +101,10 @@ export default function Tickets() {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (theme: any) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#18172A",
+    backgroundColor: theme.background,
     paddingTop: Platform.OS === "ios" ? SCREEN_HEIGHT * 0.07 : SCREEN_HEIGHT * 0.05,
   },
   header: {
@@ -110,9 +114,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: SCREEN_WIDTH * 0.05,
     marginBottom: SCREEN_HEIGHT * 0.02,
+    marginTop: SCREEN_HEIGHT * 0.03, // Ajoute un espace au-dessus du titre
   },
   title: {
-    color: "#FFFFFF",
+    color: theme.text,
     fontSize: SCREEN_WIDTH * 0.065,
     fontFamily: "KumbhSans_700Bold",
   },
@@ -128,23 +133,23 @@ const styles = StyleSheet.create({
   menuButton: {
     height: 34,
     borderRadius: 999,
-    backgroundColor: "#FFFFFF12",
+    backgroundColor: theme.isDark ? "#FFFFFF12" : theme.surfaceVariant,
     justifyContent: "center",
     alignItems: "center",
     marginRight: SCREEN_WIDTH * 0.025,
     paddingHorizontal: SCREEN_WIDTH * 0.04,
   },
   menuButtonActive: {
-    backgroundColor: "#FCC017",
+    backgroundColor: theme.primary,
   },
   menuText: {
-    color: "#FFFFFF",
+    color: theme.text,
     fontFamily: "KumbhSans_700Bold",
     fontSize: SCREEN_WIDTH * 0.035,
     textAlign: "center",
   },
   menuTextActive: {
-    color: "#18172A",
+    color: theme.primaryText,
   },
   ticketsListContainer: {
     flex: 1,

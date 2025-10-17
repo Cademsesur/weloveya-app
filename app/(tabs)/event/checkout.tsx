@@ -1,29 +1,34 @@
-import React, { useState } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  ImageBackground,
-  Dimensions,
-  TouchableOpacity,
-  TextInput,
-  Image,
-} from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
-import {
-  ChevronLeft,
-  MessageSquareShare,
-  CreditCard,
-  ChevronDown,
-} from "lucide-react-native";
-import { useRoute, useNavigation } from "@react-navigation/native";
+import { useNavigation, useRoute } from "@react-navigation/native";
 import { BlurView } from "expo-blur";
+import { LinearGradient } from "expo-linear-gradient";
+import { useTheme } from "@/services/contexts/ThemeContext";
+import {
+  ChevronDown,
+  ChevronLeft,
+  CreditCard,
+  MessageSquareShare,
+} from "lucide-react-native";
+import React, { useState, useRef } from "react";
+import {
+  Animated,
+  Dimensions,
+  Image,
+  ImageBackground,
+  PanResponder,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
 export default function CheckoutPage() {
   const route = useRoute();
   const navigation = useNavigation();
+  const { theme } = useTheme();
 
   const { price, ticket, count } = route.params as {
     price: string;
@@ -32,9 +37,44 @@ export default function CheckoutPage() {
   };
 
   const totalPrice = parseInt(price);
+  const styles = getStyles(theme);
 
   // État pour le mode de paiement
   const [paymentMode, setPaymentMode] = useState<"card" | "momo">("card");
+
+  // Animation du bottom sheet
+  const translateY = useRef(new Animated.Value(0)).current;
+
+  // Gestion du swipe pour fermer
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        return Math.abs(gestureState.dy) > 5;
+      },
+      onPanResponderMove: (_, gestureState) => {
+        if (gestureState.dy > 0) {
+          translateY.setValue(gestureState.dy);
+        }
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        if (gestureState.dy > 100) {
+          // Fermer le bottom sheet
+          Animated.timing(translateY, {
+            toValue: SCREEN_HEIGHT,
+            duration: 300,
+            useNativeDriver: true,
+          }).start(() => navigation.goBack());
+        } else {
+          // Revenir à la position initiale
+          Animated.spring(translateY, {
+            toValue: 0,
+            useNativeDriver: true,
+          }).start();
+        }
+      },
+    })
+  ).current;
 
   // États pour les inputs CARTE
   const [cardNumber, setCardNumber] = useState("");
@@ -78,20 +118,28 @@ export default function CheckoutPage() {
       </ImageBackground>
 
       {/* FORMULAIRE AVEC GLASSMORPHISM */}
-      <BlurView 
-        intensity={100} 
-        tint="dark" 
+      <Animated.View
         style={[
-          styles.blurContainer,
-          paymentMode === "momo" && styles.blurContainerMomo
+          styles.bottomSheetContainer,
+          {
+            transform: [{ translateY }],
+          },
         ]}
       >
-        <View style={styles.glassOverlay} />
+        <BlurView 
+          intensity={100} 
+          tint="dark" 
+          style={[
+            styles.blurContainer,
+            paymentMode === "momo" && styles.blurContainerMomo
+          ]}
+        >
+          <View style={styles.glassOverlay} />
 
-        {/* INDICATEUR CENTRÉ UNIQUE */}
-        <View style={styles.topIndicatorContainer}>
-          <View style={styles.topIndicator} />
-        </View>
+          {/* INDICATEUR CENTRÉ UNIQUE - Zone draggable */}
+          <View style={styles.topIndicatorContainer} {...panResponder.panHandlers}>
+            <View style={styles.topIndicator} />
+          </View>
 
         {/* TABS DE SÉLECTION - BLOC UNI */}
         <View style={styles.tabsContainer}>
@@ -121,7 +169,11 @@ export default function CheckoutPage() {
         </View>
 
         {/* CONTENU DU FORMULAIRE */}
-        <View style={styles.contentContainer}>
+        <ScrollView 
+          style={styles.contentContainer}
+          showsVerticalScrollIndicator={false}
+          bounces={false}
+        >
           {paymentMode === "card" ? (
             // FORMULAIRE CARTE
             <View style={styles.formInner}>
@@ -293,11 +345,6 @@ export default function CheckoutPage() {
                     keyboardType="phone-pad"
                   />
                 </View>
-                <Image
-                  source={require("@/assets/images/mtn.png")}
-                  style={styles.mtnIcon}
-                  resizeMode="contain"
-                />
               </View>
 
               {/* Nom et Prénom - CÔTE À CÔTE */}
@@ -338,7 +385,7 @@ export default function CheckoutPage() {
               />
             </View>
           )}
-        </View>
+        </ScrollView>
 
         {/* BOUTON DE PAIEMENT - TOUJOURS EN BAS */}
         <View style={styles.buttonContainer}>
@@ -348,22 +395,23 @@ export default function CheckoutPage() {
             </Text>
           </TouchableOpacity>
         </View>
-      </BlurView>
+        </BlurView>
+      </Animated.View>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#18172A" },
+const getStyles = (theme: any) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: theme.background },
 
   header: {
     width: "90%",
-    height: SCREEN_HEIGHT * 0.035,
+    height: SCREEN_HEIGHT * 0.045,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     position: "absolute",
-    top: SCREEN_HEIGHT * 0.035,
+    top: SCREEN_HEIGHT * 0.07, // Pousse le header plus bas
     left: SCREEN_WIDTH * 0.04,
     zIndex: 10,
   },
@@ -375,11 +423,14 @@ const styles = StyleSheet.create({
     top: 0,
   },
 
-  blurContainer: {
+  bottomSheetContainer: {
     position: "absolute",
     bottom: 0,
     width: SCREEN_WIDTH,
     height: SCREEN_HEIGHT * 0.85,
+  },
+  blurContainer: {
+    flex: 1,
     borderTopLeftRadius: 30,
     borderTopRightRadius: 30,
     overflow: "hidden",
@@ -398,8 +449,8 @@ const styles = StyleSheet.create({
 
   topIndicatorContainer: {
     width: "100%",
-    height: 4,
-    marginTop: 12,
+    height: 30,
+    marginTop: 8,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -456,6 +507,7 @@ const styles = StyleSheet.create({
   contentContainer: {
     flex: 1,
     paddingHorizontal: SCREEN_WIDTH * 0.04,
+    paddingBottom: 100,
   },
 
   formInner: {

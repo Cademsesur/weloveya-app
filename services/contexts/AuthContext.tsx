@@ -1,17 +1,20 @@
 // contexts/AuthContext.tsx
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { router } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import ApiService, { User, RegisterData, LoginData } from '@/services/api';
 
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
   isAuthenticated: boolean;
+  isFirstVisit: boolean;
   login: (data: LoginData) => Promise<void>;
   register: (data: RegisterData) => Promise<void>;
   logout: () => Promise<void>;
   error: string | null;
   clearError: () => void;
+  markOnboardingComplete: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -19,6 +22,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isFirstVisit, setIsFirstVisit] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -27,16 +31,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const checkAuthStatus = async () => {
     try {
+      // Vérifier si c'est la première visite
+      const hasVisited = await AsyncStorage.getItem('has_visited');
+      setIsFirstVisit(hasVisited !== 'true');
+
+      // Vérifier si l'utilisateur est connecté
       const token = await ApiService.getToken();
+      
       if (token) {
-        // Ici tu pourrais appeler un endpoint pour récupérer les infos de l'utilisateur
-        // Pour l'instant on considère qu'il est authentifié si le token existe
-        setIsLoading(false);
-      } else {
-        setIsLoading(false);
+        // Récupérer les données utilisateur sauvegardées
+        const savedUser = await AsyncStorage.getItem('user_data');
+        if (savedUser) {
+          setUser(JSON.parse(savedUser));
+        }
       }
-    } catch (err) {
       setIsLoading(false);
+    } catch (err) {
+      console.error('Error checking auth status:', err);
+      setIsLoading(false);
+    }
+  };
+
+  const markOnboardingComplete = async () => {
+    try {
+      await AsyncStorage.setItem('has_visited', 'true');
+      setIsFirstVisit(false);
+    } catch (err) {
+      console.error('Error marking onboarding complete:', err);
     }
   };
 
@@ -44,8 +65,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       setError(null);
       setIsLoading(true);
+      
       const response = await ApiService.login(data);
       setUser(response.data.user);
+      
+      // Sauvegarder les données utilisateur
+      await AsyncStorage.setItem('user_data', JSON.stringify(response.data.user));
+      await markOnboardingComplete();
+      
       router.replace('/(tabs)/dashboard');
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Erreur de connexion';
@@ -60,8 +87,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       setError(null);
       setIsLoading(true);
+      
       const response = await ApiService.register(data);
       setUser(response.data.user);
+      
+      // Sauvegarder les données utilisateur
+      await AsyncStorage.setItem('user_data', JSON.stringify(response.data.user));
+      await markOnboardingComplete();
+      
       router.replace('/(tabs)/dashboard');
     } catch (err) {
       const message = err instanceof Error ? err.message : "Erreur d'inscription";
@@ -75,11 +108,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = async () => {
     try {
       setIsLoading(true);
-      await ApiService.logout();
-      setUser(null);
+      // Rediriger immédiatement vers l'onboarding
       router.replace('/(tabs)/onboarding');
+      
+      // Nettoyer les données en arrière-plan
+      try {
+        await ApiService.logout();
+      } catch (e) {
+        console.warn('Error during API logout (non-critical):', e);
+      }
+      
+      setUser(null);
+      // Supprimer toutes les données utilisateur en une seule opération
+      await AsyncStorage.multiRemove(['user_data', 'has_visited', 'theme_mode']);
+      setIsFirstVisit(true);
     } catch (err) {
       console.error('Logout error:', err);
+      throw err; // Propager l'erreur pour une gestion plus poussée si nécessaire
     } finally {
       setIsLoading(false);
     }
@@ -93,11 +138,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         user,
         isLoading,
         isAuthenticated: !!user,
+        isFirstVisit,
         login,
         register,
         logout,
         error,
         clearError,
+        markOnboardingComplete,
       }}
     >
       {children}

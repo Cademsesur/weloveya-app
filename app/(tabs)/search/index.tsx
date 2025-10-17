@@ -1,7 +1,11 @@
+import { useTheme } from '@/services/contexts/ThemeContext';
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 export default function Search() {
+  const { theme } = useTheme();
+  const styles = getStyles(theme);
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Search</Text>
@@ -10,22 +14,22 @@ export default function Search() {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (theme: any) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#18172A',
+    backgroundColor: theme.background,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
   },
   title: {
-    color: '#FFFFFF',
+    color: theme.text,
     fontSize: 28,
     fontWeight: '700',
     marginBottom: 8,
   },
   subtitle: {
-    color: '#A9A8B3',
+    color: theme.textSecondary,
     fontSize: 14,
   },
 });
